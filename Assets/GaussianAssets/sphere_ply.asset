@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 33b71fae31e6c7d438e8566dc713e666, type: 3}
+  m_Name: sphere_ply
+  m_EditorClassIdentifier: 
+  m_FormatVersion: 20231020
+  m_SplatCount: 16200
+  m_BoundsMin: {x: -0.5, y: -0.5, z: -0.49969542}
+  m_BoundsMax: {x: 0.5, y: 0.5, z: 0.5}
+  m_DataHash:
+    serializedVersion: 2
+    Hash: ce50ddd5f20aba1dfee1fc7f16b4d3ea
+  m_PosFormat: 0
+  m_ScaleFormat: 0
+  m_SHFormat: 0
+  m_ColorFormat: 0
+  m_PosData: {fileID: 4900000, guid: 831fce1bb8d644404b178d9f25de57f8, type: 3}
+  m_ColorData: {fileID: 4900000, guid: 2f8da356fe85445969d2d8b0952fcf1c, type: 3}
+  m_OtherData: {fileID: 4900000, guid: ab1f0feed439b431a8fc26bc1b69a8de, type: 3}
+  m_SHData: {fileID: 4900000, guid: 484fdbcd635ad47f7906d8b391a6caad, type: 3}
+  m_ChunkData: {fileID: 0}
+  m_Cameras: []

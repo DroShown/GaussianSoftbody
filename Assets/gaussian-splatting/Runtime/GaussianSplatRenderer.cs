@@ -1070,5 +1070,21 @@ namespace GaussianSplatting.Runtime
         }
 
         public GraphicsBuffer GpuEditDeleted => m_GpuEditDeleted;
+
+        // public void OnDrawGizmos()
+        // {
+        //     Gizmos.color = Color.red;
+        //     //Draw splat every 100 splats
+        //     if (m_GpuPosData == null || m_GpuPosData.count == 0)
+        //         return;
+        //     
+        //     var posData = new Vector3[m_GpuPosData.count/3];
+        //     m_GpuPosData.GetData(posData);
+        //     for (int i = 0; i < m_GpuPosData.count/3; i += 100)
+        //     {
+        //         var pos = posData[i];
+        //         Gizmos.DrawSphere(pos, 0.02f);
+        //     }
+        // }
     }
 }

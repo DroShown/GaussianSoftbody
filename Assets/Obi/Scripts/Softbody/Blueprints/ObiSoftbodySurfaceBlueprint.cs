@@ -135,11 +135,16 @@ namespace Obi
             for (int i = 0; i < vertices.Length; ++i)
             {
                 vertices[i] = blueprintTransform.MultiplyPoint3x4(vertices[i]);
+                vertices[i].x = -1* vertices[i].x;
                 transformedBounds.Encapsulate(vertices[i]);
             }
 
             for (int i = 0; i < normals.Length; ++i)
+            {
                 normals[i] = Vector3.Normalize(blueprintTransform.MultiplyVector(normals[i]));
+                normals[i].x = -1* normals[i].x;
+            }
+                
 
             // initialize arrays:
             particleType = new List<ParticleType>();

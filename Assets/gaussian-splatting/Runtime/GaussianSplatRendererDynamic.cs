@@ -1,16 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-using System;
-using System.Collections.Generic;
-using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
-using Unity.Profiling;
-using Unity.Profiling.LowLevel;
 using UnityEngine;
-using UnityEngine.Experimental.Rendering;
-using UnityEngine.Rendering;
 using Obi;
+using UnityEngine.Rendering;
 
 
 namespace GaussianSplatting.Runtime
@@ -62,9 +55,14 @@ namespace GaussianSplatting.Runtime
             m_ObiSoftbody.SetPosDataToCS(m_GpuParticlePosData);
             m_ObiSoftbody.SetRestPosDataToCS(m_GpuParticleRestPosData);
 
-            BindBuffersToCS((int)KernelIndices.CalcIndicesAndWeight);
+            var cmb = new CommandBuffer();
+            BindBuffersToCS((int)KernelIndices.CalcIndicesAndWeight,cmb);
+            //BindBuffersToCS((int)KernelIndices.CalcIndicesAndWeight);
+            cmb.DispatchCompute(m_ComputeShader,(int)KernelIndices.CalcIndicesAndWeight,m_SplatCount,1,1);
+            Graphics.ExecuteCommandBuffer(cmb);
             
-            m_ComputeShader.Dispatch((int)KernelIndices.CalcIndicesAndWeight,m_SplatCount,1,1);
+            
+            //m_ComputeShader.Dispatch((int)KernelIndices.CalcIndicesAndWeight,m_SplatCount,1,1);
 
             //create a temp array to store the data
             boneWeights = new float4[m_SplatCount];
@@ -86,12 +84,48 @@ namespace GaussianSplatting.Runtime
             m_ObiSoftbody.SetRotDataToCS(m_GpuParticleRotData);
             m_ObiSoftbody.SetPosDataToCS(m_GpuParticlePosData);
             //TestTranslatePos();
-            BindBuffersToCS((int)KernelIndices.UpdatePos);
-            m_ComputeShader.Dispatch((int)KernelIndices.UpdatePos,(m_SplatCount+1023)/1024,1,1);
-            //m_GpuPosData.GetData(splatPos);
-            //m_GpuParticlePosData.GetData(particlePos);
+            var cmb = new CommandBuffer();
+            BindBuffersToCS((int)KernelIndices.UpdatePos,cmb);
+            //BindBuffersToCS((int)KernelIndices.UpdatePos);
+            //m_ComputeShader.Dispatch((int)KernelIndices.UpdatePos,(m_SplatCount+1023)/1024,1,1);
+            cmb.DispatchCompute(m_ComputeShader,(int)KernelIndices.UpdatePos,(m_SplatCount+1023)/1024,1,1);
+            Graphics.ExecuteCommandBuffer(cmb);
             
-            
+        }
+
+        internal new void CalcViewData(CommandBuffer cmb, Camera cam, Matrix4x4 matrix)
+        {
+            if (cam.cameraType == CameraType.Preview)
+                return;
+
+            var tr = transform;
+
+            Matrix4x4 matView = cam.worldToCameraMatrix;
+            Matrix4x4 matProj = GL.GetGPUProjectionMatrix(cam.projectionMatrix, true);
+            Matrix4x4 matO2W = tr.localToWorldMatrix;
+            Matrix4x4 matW2O = tr.worldToLocalMatrix;
+            int screenW = cam.pixelWidth, screenH = cam.pixelHeight;
+            Vector4 screenPar = new Vector4(screenW, screenH, 0, 0);
+            Vector4 camPos = cam.transform.position;
+
+            // calculate view dependent data for each splat
+            SetAssetDataOnCS(cmb, KernelIndices.CalcViewData);
+
+            cmb.SetComputeMatrixParam(m_CSSplatUtilities, Props.MatrixVP, matProj * matView);
+            cmb.SetComputeMatrixParam(m_CSSplatUtilities, Props.MatrixMV, matView * matO2W);
+            cmb.SetComputeMatrixParam(m_CSSplatUtilities, Props.MatrixP, matProj);
+            cmb.SetComputeMatrixParam(m_CSSplatUtilities, Props.MatrixObjectToWorld, matO2W);
+            cmb.SetComputeMatrixParam(m_CSSplatUtilities, Props.MatrixWorldToObject, matW2O);
+
+            cmb.SetComputeVectorParam(m_CSSplatUtilities, Props.VecScreenParams, screenPar);
+            cmb.SetComputeVectorParam(m_CSSplatUtilities, Props.VecWorldSpaceCameraPos, camPos);
+            cmb.SetComputeFloatParam(m_CSSplatUtilities, Props.SplatScale, m_SplatScale);
+            cmb.SetComputeFloatParam(m_CSSplatUtilities, Props.SplatOpacityScale, m_OpacityScale);
+            cmb.SetComputeIntParam(m_CSSplatUtilities, Props.SHOrder, m_SHOrder);
+            cmb.SetComputeIntParam(m_CSSplatUtilities, Props.SHOnly, m_SHOnly ? 1 : 0);
+
+            m_CSSplatUtilities.GetKernelThreadGroupSizes((int)KernelIndices.CalcViewData, out uint gsX, out _, out _);
+            cmb.DispatchCompute(m_CSSplatUtilities, (int)KernelIndices.CalcViewData, (m_GpuView.count + (int)gsX - 1)/(int)gsX, 1, 1);
         }
 
         private void TestTranslatePos()
@@ -113,17 +147,33 @@ namespace GaussianSplatting.Runtime
             // // Debug.Log(data[1]);
         }
         
-        private void BindBuffersToCS(int kernelIndex)
+        private void BindBuffersToCS(int kernelIndex, CommandBuffer cmb = null)
         {
-            m_ComputeShader.SetInt("_BoneCount",m_ParticleCount);
-            m_ComputeShader.SetBuffer(kernelIndex,"_SplatPos",m_GpuPosData);
-            m_ComputeShader.SetBuffer(kernelIndex,"_SplatRestPos",m_GpuRestPosData);
-            m_ComputeShader.SetBuffer(kernelIndex,"_BoneRestPosBuffer", m_GpuParticleRestPosData);
-            m_ComputeShader.SetBuffer(kernelIndex, "_BonePosBuffer", m_GpuParticlePosData);
-            m_ComputeShader.SetBuffer(kernelIndex, "_BoneRestRotBuffer", m_GpuParticleRestRotData);
-            m_ComputeShader.SetBuffer(kernelIndex, "_BoneRotBuffer", m_GpuParticleRotData);
-            m_ComputeShader.SetBuffer(kernelIndex, "_BoneIndicesBuffer", m_GpuBoneIndices);
-            m_ComputeShader.SetBuffer(kernelIndex, "_BoneWeightBuffer", m_GpuBoneWeights);
+            if (cmb == null)
+            {
+                m_ComputeShader.SetInt("_BoneCount",m_ParticleCount);
+                m_ComputeShader.SetBuffer(kernelIndex,"_SplatPos",m_GpuPosData);
+                m_ComputeShader.SetBuffer(kernelIndex,"_SplatRestPos",m_GpuRestPosData);
+                m_ComputeShader.SetBuffer(kernelIndex,"_BoneRestPosBuffer", m_GpuParticleRestPosData);
+                m_ComputeShader.SetBuffer(kernelIndex, "_BonePosBuffer", m_GpuParticlePosData);
+                m_ComputeShader.SetBuffer(kernelIndex, "_BoneRestRotBuffer", m_GpuParticleRestRotData);
+                m_ComputeShader.SetBuffer(kernelIndex, "_BoneRotBuffer", m_GpuParticleRotData);
+                m_ComputeShader.SetBuffer(kernelIndex, "_BoneIndicesBuffer", m_GpuBoneIndices);
+                m_ComputeShader.SetBuffer(kernelIndex, "_BoneWeightBuffer", m_GpuBoneWeights);
+            }
+            else
+            {
+                cmb.SetComputeIntParam(m_ComputeShader, "_BoneCount", m_ParticleCount);
+                cmb.SetComputeBufferParam(m_ComputeShader, kernelIndex, "_SplatPos", m_GpuPosData);
+                cmb.SetComputeBufferParam(m_ComputeShader, kernelIndex, "_SplatRestPos", m_GpuRestPosData);
+                cmb.SetComputeBufferParam(m_ComputeShader, kernelIndex, "_BoneRestPosBuffer", m_GpuParticleRestPosData);
+                cmb.SetComputeBufferParam(m_ComputeShader, kernelIndex, "_BonePosBuffer", m_GpuParticlePosData);
+                cmb.SetComputeBufferParam(m_ComputeShader, kernelIndex, "_BoneRestRotBuffer", m_GpuParticleRestRotData);
+                cmb.SetComputeBufferParam(m_ComputeShader, kernelIndex, "_BoneRotBuffer", m_GpuParticleRotData);
+                cmb.SetComputeBufferParam(m_ComputeShader, kernelIndex, "_BoneIndicesBuffer", m_GpuBoneIndices);
+                cmb.SetComputeBufferParam(m_ComputeShader, kernelIndex, "_BoneWeightBuffer", m_GpuBoneWeights);
+            }
+            
         }
         
         

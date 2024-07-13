@@ -445,27 +445,7 @@ namespace Obi
 
             m_SoftBones.Clear();
         }
-
-        public void OnDrawGizmos()
-        {
-            
-            // //draw all particles as ellipsoid gizmos:
-            // if (m_Source != null && m_Source.solver != null)
-            // {
-            //     Gizmos.color = Color.red;
-            //     var constraints = m_Source.softbodyBlueprint.GetConstraintsByType(Oni.ConstraintType.ShapeMatching) as ObiConstraints<ObiShapeMatchingConstraintsBatch>;
-            //     for (int j = 0; j < constraints.GetBatchCount(); ++j)
-            //     {
-            //         var batch = constraints.GetBatch(j) as ObiShapeMatchingConstraintsBatch;
-            //         for (int i = 0; i < batch.activeConstraintCount; ++i)
-            //         {
-            //             int shapeIndex = batch.particleIndices[batch.firstIndex[i]];
-              //          Gizmos.DrawSphere(m_Source.GetParticlePosition(m_Source.solverIndices[shapeIndex]), 0.05f);
-            //         }
-            //     }
-            // }
-
-        }
+        
         
     }
 }

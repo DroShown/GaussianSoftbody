@@ -130,9 +130,19 @@
 //
 //             // Transform mesh data:
 //             blueprintTransform = Matrix4x4.TRS(Vector3.zero, rotation, scale);
-//             Vector3[] vertices = inputMesh.vertices;
-//             Vector3[] normals = inputMesh.normals;
-//             int[] tris = inputMesh.triangles;
+//             var posData = inputGaussian.posData.GetData<uint>();
+//             Vector3[] vertices = new Vector3[inputGaussian.splatCount];
+//             //set vertices data
+//             for (int i = 0; i < inputGaussian.splatCount; i++)
+//             {
+//                 vertices[i] = new Vector3(
+//                     BitConverter.ToSingle(posData, i * 16),
+//                     BitConverter.ToSingle(posData, i * 16 + 4),
+//                     BitConverter.ToSingle(posData, i * 16 + 8)
+//                 );
+//             }
+//             // Vector3[] normals = inputMesh.normals;
+//             // int[] tris = inputMesh.triangles;
 //             Bounds transformedBounds = new Bounds();
 //
 //             for (int i = 0; i < vertices.Length; ++i)
@@ -149,22 +159,6 @@
 //
 //             // initialize graph coloring:
 //             colorizer = new GraphColoring();
-//             
-//             if (surfaceSamplingMode == SurfaceSamplingMode.Vertices)
-//             {
-//                 //read particle positions from input gaussian
-//                 var sv = VertexSampling(vertices, particlePositions);
-//                 while (sv.MoveNext()) yield return sv.Current;
-//
-//                 var mp = MapVerticesToParticles(vertices, normals, particlePositions, particleNormals);
-//                 while (mp.MoveNext()) yield return mp.Current;
-//
-//                 var ss = SurfaceMeshShapeMatchingConstraints(particlePositions, tris);
-//                 while (ss.MoveNext()) yield return ss.Current;
-//             }
-//
-//
-//             
 //
 //             // generate particles:
 //             var generate = GenerateParticles(particlePositions, particleNormals);
@@ -182,33 +176,8 @@
 //
 //         }
 //
-//         private Vector3 ProjectOnMesh(Vector3 point, Vector3[] vertices, int[] tris)
-//         {
-//             Vector3 triProjection;
-//             Vector3 meshProjection = point;
-//             float min = float.MaxValue;
-//
-//             var voxel = surfaceVoxelizer.GetPointVoxel(point) - surfaceVoxelizer.Origin;
-//             var triangleIndices = surfaceVoxelizer.GetTrianglesOverlappingVoxel(surfaceVoxelizer.GetVoxelIndex(voxel.x, voxel.y, voxel.z));
-//
-//             if (triangleIndices != null)
-//             {
-//                 foreach (int i in triangleIndices)
-//                 {
-//                     ObiUtils.NearestPointOnTri(vertices[tris[i * 3]], vertices[tris[i * 3 + 1]], vertices[tris[i * 3 + 2]], point, out triProjection);
-//                     float dist = Vector3.SqrMagnitude(triProjection - point);
-//                     if (dist < min)
-//                     {
-//                         min = dist;
-//                         meshProjection = triProjection;
-//                     }
-//                 }
-//             }
-//             return meshProjection;
-//         }
 //
 //
-//         
 //
 //
 //
@@ -240,27 +209,7 @@
 //             }
 //         }
 //
-//         private IEnumerator VoxelSampling(MeshVoxelizer voxelizer, List<Vector3> particles, MeshVoxelizer.Voxel voxelType, ParticleType pType)
-//         {
-//             int i = 0;
-//
-//             for (int x = 0; x < voxelizer.resolution.x; ++x)
-//                 for (int y = 0; y < voxelizer.resolution.y; ++y)
-//                     for (int z = 0; z < voxelizer.resolution.z; ++z)
-//                     {
-//                         if ((voxelizer[x, y, z] & voxelType) != 0)
-//                         {
-//                             var voxel = new Vector3Int(x, y, z);
-//                             Vector3 voxelCenter = voxelizer.GetVoxelCenter(voxel);
-//
-//                             particles.Add(voxelCenter);
-//                             particleType.Add(pType);
-//                         }
-//                         if (++i % 1000 == 0)
-//                             yield return new CoroutineJob.ProgressInfo("ObiSoftbody: sampling voxels...", i / (float)voxelizer.voxelCount);
-//                     }
-//         }
-//
+//  
 //
 //
 //         private IEnumerator MapVerticesToParticles(Vector3[] vertices, Vector3[] normals, List<Vector3> particlePositions, List<Vector3> particleNormals)
@@ -350,7 +299,7 @@
 //                     ObiUtils.GetPointCloudAnisotropy(neighborhood, maxAnisotropy, particleRadius, dfnormal, ref centroid, ref orientation, ref principalValues);
 //
 //                 invRotationalMasses[i] = invMasses[i] = 1.0f;
-//                 positions[i] = Vector3.Lerp(particlePositions[i], centroid, smoothing);
+//                 positions[i] = particlePositions[i];
 //                 restPositions[i] = positions[i];
 //                 restPositions[i][3] = 1; // activate rest position.
 //                 orientations[i] = orientation;
@@ -406,67 +355,7 @@
 //                 }
 //             }
 //         }
-//
-//         protected IEnumerator CreateClustersFromVoxels(MeshVoxelizer voxelizer, List<Vector3> particles, VoxelConnectivity connectivity, List<ParticleType> allowed)
-//         {
-//             float clusterSize = ObiUtils.sqrt3 * voxelizer.voxelSize * 1.5f;
-//
-//             List<int> cluster = new List<int>();
-//             for (int i = 0; i < particles.Count; ++i)
-//             {
-//                 Vector3Int voxel = voxelizer.GetPointVoxel(particles[i]) - voxelizer.Origin;
-//
-//                 cluster.Clear();
-//                 cluster.Add(i);
-//
-//                 if ((connectivity & VoxelConnectivity.Faces) != 0)
-//                     ConnectToNeighborParticles(voxelizer, i, particles, allowed, voxel.x, voxel.y, voxel.z, MeshVoxelizer.faceNeighborhood, clusterSize, cluster);
-//
-//                 if ((connectivity & VoxelConnectivity.Edges) != 0)
-//                     ConnectToNeighborParticles(voxelizer, i, particles, allowed, voxel.x, voxel.y, voxel.z, MeshVoxelizer.edgeNeighborhood, clusterSize, cluster);
-//
-//                 if ((connectivity & VoxelConnectivity.Vertices) != 0)
-//                     ConnectToNeighborParticles(voxelizer, i, particles, allowed, voxel.x, voxel.y, voxel.z, MeshVoxelizer.vertexNeighborhood, clusterSize, cluster);
-//
-//                 colorizer.AddConstraint(cluster.ToArray());
-//
-//                 if (i % 100 == 0)
-//                     yield return new CoroutineJob.ProgressInfo("ObiSoftbody: generating shape matching clusters...", i / (float)voxelizer.voxelCount);
-//             }
-//         }
-//
-//         protected IEnumerator CreateClustersFromSkeleton(List<Vector3> particles)
-//         {
-//             if (volumeVoxelizer == null && surfaceVoxelizer == null)
-//                 yield break;
-//
-//             float voxelSize = volumeVoxelizer != null ? volumeVoxelizer.voxelSize : surfaceVoxelizer.voxelSize;
-//             float clusterSize = ObiUtils.sqrt3 * voxelSize * 1.5f;
-//
-//             // skeleton particles
-//             List<int> cluster = new List<int>();
-//             for (int i = 0; i < particles.Count; ++i)
-//             {
-//                 if (particleType[i] == ParticleType.Bone)
-//                 {
-//                     cluster.Clear();
-//                     cluster.Add(i);
-//
-//                     for (int j = 0; j < particles.Count; ++j)
-//                     {
-//                         if (particleType[j] != ParticleType.Bone && Vector3.Distance(particles[j], particles[i]) <= clusterSize * 0.5f)
-//                         {
-//                             cluster.Add(j);
-//                         }
-//                     }
-//
-//                     colorizer.AddConstraint(cluster.ToArray());
-//                 }
-//
-//                 if (i % 100 == 0)
-//                     yield return new CoroutineJob.ProgressInfo("ObiSoftbody: generating shape matching clusters...", i / (float)particles.Count);
-//             }
-//         }
+//         
 //
 //         protected IEnumerator SurfaceMeshShapeMatchingConstraints(List<Vector3> particles, int[] meshTriangles)
 //         {

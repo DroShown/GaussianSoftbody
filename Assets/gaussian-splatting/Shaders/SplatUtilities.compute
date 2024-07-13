@@ -784,10 +784,11 @@ void CSCopySplats (uint3 id : SV_DispatchThreadID)
 
 #define BonesPerVertex 4
 int _BoneCount;
-RWByteAddressBuffer _BoneIndicesBuffer ;
-RWByteAddressBuffer _BoneWeightBuffer ;
+RWByteAddressBuffer _BoneIndicesBuffer;
+RWByteAddressBuffer _BoneWeightBuffer;
 ByteAddressBuffer _BoneRestPosBuffer;
 ByteAddressBuffer _BonePosBuffer;
+ByteAddressBuffer _BoneRestRotBuffer;
 ByteAddressBuffer _BoneRotBuffer;
 
 [numthreads(GROUP_SIZE,1,1)]
@@ -807,7 +808,7 @@ void CSCalcIndiceAndWeight(uint3 id : SV_DispatchThreadID)
         float3 bonePos = asfloat(_BoneRestPosBuffer.Load3(i * 16));
 
         float distance = dot(bonePos - pos, bonePos - pos);
-        float weight = 1.0 / (distance + 1.0e-4);
+        float weight = 1.0 / (distance + 1.0e-6);
         if(weight > boneWeights.x)
         {
             boneWeights.w = boneWeights.z;
@@ -848,14 +849,6 @@ void CSCalcIndiceAndWeight(uint3 id : SV_DispatchThreadID)
     }
 
     //normalize weights
-    // boneWeights.x = sqrt(boneWeights.x);
-    // boneWeights.y = sqrt(boneWeights.y);
-    // boneWeights.z = sqrt(boneWeights.z);
-    // boneWeights.w = sqrt(boneWeights.w);
-    // boneWeights.x = mul(boneWeights.x, boneWeights.x);
-    // boneWeights.y = mul(boneWeights.y, boneWeights.y);
-    // boneWeights.z = mul(boneWeights.z, boneWeights.z);
-    // boneWeights.w = mul(boneWeights.w, boneWeights.w);
     float sum = boneWeights.x + boneWeights.y + boneWeights.z + boneWeights.w;
     boneWeights /= sum;
     //store
@@ -884,12 +877,42 @@ void CSUpdatePos(uint3 id : SV_DispatchThreadID)
     float3 boneRestPos2 = asfloat(_BoneRestPosBuffer.Load3(boneIndices.y * 16));
     float3 boneRestPos3 = asfloat(_BoneRestPosBuffer.Load3(boneIndices.z * 16));
     float3 boneRestPos4 = asfloat(_BoneRestPosBuffer.Load3(boneIndices.w * 16));
+
+    float4 rot = asfloat(_BoneRotBuffer.Load4(boneIndices.x * 16));
+    float4 rot2 = asfloat(_BoneRotBuffer.Load4(boneIndices.y * 16));
+    float4 rot3 = asfloat(_BoneRotBuffer.Load4(boneIndices.z * 16));
+    float4 rot4 = asfloat(_BoneRotBuffer.Load4(boneIndices.w * 16));
+
+    float4 restRot = asfloat(_BoneRestRotBuffer.Load4(boneIndices.x * 16));
+    float4 restRot2 = asfloat(_BoneRestRotBuffer.Load4(boneIndices.y * 16));
+    float4 restRot3 = asfloat(_BoneRestRotBuffer.Load4(boneIndices.z * 16));
+    float4 restRot4 = asfloat(_BoneRestRotBuffer.Load4(boneIndices.w * 16));
+
+    float4 diffRot = QuatMul(rot,QuatConjugate(restRot));
+    float4 diffRot2 = QuatMul(rot2,QuatConjugate(restRot2));
+    float4 diffRot3 = QuatMul(rot3,QuatConjugate(restRot3));
+    float4 diffRot4 = QuatMul(rot4,QuatConjugate(restRot4));
+    // float4 diffRot = float4(0,0,0,0);
+    // float4 diffRot2 = float4(0,0,0,0);
+    // float4 diffRot3 = float4(0,0,0,0);
+    // float4 diffRot4 = float4(0,0,0,0);
+    
+
+    float3 deltaPos = restPos - boneRestPos;
+    float3 deltaPos2 = restPos - boneRestPos2;
+    float3 deltaPos3 = restPos - boneRestPos3;
+    float3 deltaPos4 = restPos - boneRestPos4;
+
+    float3 rotDeltaPos = QuatRotateVector(deltaPos, diffRot) - deltaPos;
+    float3 rotDeltaPos2 = QuatRotateVector(deltaPos2, diffRot2) - deltaPos2;
+    float3 rotDeltaPos3 = QuatRotateVector(deltaPos3, diffRot3) - deltaPos3;
+    float3 rotDeltaPos4 = QuatRotateVector(deltaPos4, diffRot4) - deltaPos4;
     
     float3 pos = restPos +
-        (bonePos - boneRestPos)* boneWeights.x + 
-        (bonePos2 - boneRestPos2) * boneWeights.y + 
-        (bonePos3 - boneRestPos3) * boneWeights.z + 
-        (bonePos4 - boneRestPos4) * boneWeights.w;
+        (bonePos + rotDeltaPos - boneRestPos) * boneWeights.x + 
+        (bonePos2 + rotDeltaPos2 - boneRestPos2) * boneWeights.y + 
+        (bonePos3 + rotDeltaPos3 - boneRestPos3) * boneWeights.z + 
+        (bonePos4 + rotDeltaPos4 - boneRestPos4) * boneWeights.w;
     
     _SplatPos.Store3(idx * stride, asuint(pos));
 }

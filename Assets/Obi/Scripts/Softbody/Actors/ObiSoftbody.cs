@@ -292,6 +292,11 @@ namespace Obi
             //set the data to the compute shader:
             buffer.SetData(solver.orientations.AsNativeArray<quaternion>());
         }
+        public void SetRestRotDataToCS(ComputeBuffer buffer)
+        {
+            //set the data to the compute shader:
+            buffer.SetData(solver.orientations.AsNativeArray<quaternion>());
+        }
         
         public void OnDrawGizmos()
         {
@@ -303,7 +308,7 @@ namespace Obi
                 var restPos = restPositions[i];
                 Gizmos.color = Color.green;
                 Gizmos.DrawLine(pos, restPos);
-                Gizmos.DrawSphere(pos, 0.03f);
+                Gizmos.DrawSphere(pos, 0.01f);
             }
         }
 

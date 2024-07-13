@@ -21,9 +21,29 @@ float4 QuatMul(float4 a, float4 b)
     return float4(a.wwww * b + (a.xyzx * b.wwwx + a.yzxy * b.zxyy) * float4(1,1,1,-1) - a.zxyz * b.yzxz);
 }
 
+float4 QuatMulNew(float4 a, float4 b)
+{
+    return float4(
+        a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
+        a.w * b.y + a.y * b.w + a.z * b.x - a.x * b.z,
+        a.w * b.z + a.z * b.w + a.x * b.y - a.y * b.x,
+        a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z
+    );
+}
+
+float3 QuatRotateVectorNew(float3 v, float4 r)
+{
+    float3 t = cross(r.xyz, v);
+    return v + 2.0 * (r.w * t + cross(r.xyz, t));
+}
+
 float4 QuatInverse(float4 q)
 {
     return rcp(dot(q, q)) * q * float4(-1,-1,-1,1);
+}
+
+float4 QuatConjugate(float4 q) {
+    return float4(-q.xyz, q.w);
 }
 
 float3x3 CalcMatrixFromRotationScale(float4 rot, float3 scale)

@@ -24,13 +24,17 @@ namespace GaussianSplatting.Runtime
         public ObiSoftbody m_ObiSoftbody;
         ComputeBuffer m_GpuParticlePosData;
         ComputeBuffer m_GpuParticleRestPosData;
+        ComputeBuffer m_GpuParticleRotData;
+        ComputeBuffer m_GpuParticleRestRotData;
         ComputeBuffer m_GpuBoneIndices;
         ComputeBuffer m_GpuBoneWeights;
+        
         public float4[] boneWeights;
         public int4[] boneIndices;
         public float3[] splatPos;
         public float3[] splatRestPos;
         public float4[] particlePos;
+        
         public ComputeShader m_ComputeShader => m_CSSplatUtilities;
         public int m_ParticleCount;
         
@@ -44,12 +48,17 @@ namespace GaussianSplatting.Runtime
 
             m_GpuParticlePosData = new ComputeBuffer(m_ParticleCount, sizeof(float) * 4);
             m_GpuParticleRestPosData = new ComputeBuffer(m_ParticleCount, sizeof(float) * 4);
+            m_GpuParticleRotData = new ComputeBuffer(m_ParticleCount, sizeof(float) * 4);
+            m_GpuParticleRestRotData = new ComputeBuffer(m_ParticleCount, sizeof(float) * 4);
             m_GpuBoneIndices = new ComputeBuffer(m_SplatCount, sizeof(int) * 4);
             m_GpuBoneWeights = new ComputeBuffer(m_SplatCount, sizeof(float) * 4);
             
             
+            
             if(m_GpuParticlePosData == null)
                 Debug.Log("m_GPUpos is null");
+            m_ObiSoftbody.SetRotDataToCS(m_GpuParticleRotData);
+            m_ObiSoftbody.SetRestRotDataToCS(m_GpuParticleRestRotData);
             m_ObiSoftbody.SetPosDataToCS(m_GpuParticlePosData);
             m_ObiSoftbody.SetRestPosDataToCS(m_GpuParticleRestPosData);
 
@@ -74,6 +83,7 @@ namespace GaussianSplatting.Runtime
         {
             //调用基类的Update方法
             base.Update();
+            m_ObiSoftbody.SetRotDataToCS(m_GpuParticleRotData);
             m_ObiSoftbody.SetPosDataToCS(m_GpuParticlePosData);
             //TestTranslatePos();
             BindBuffersToCS((int)KernelIndices.UpdatePos);
@@ -110,18 +120,22 @@ namespace GaussianSplatting.Runtime
             m_ComputeShader.SetBuffer(kernelIndex,"_SplatRestPos",m_GpuRestPosData);
             m_ComputeShader.SetBuffer(kernelIndex,"_BoneRestPosBuffer", m_GpuParticleRestPosData);
             m_ComputeShader.SetBuffer(kernelIndex, "_BonePosBuffer", m_GpuParticlePosData);
+            m_ComputeShader.SetBuffer(kernelIndex, "_BoneRestRotBuffer", m_GpuParticleRestRotData);
+            m_ComputeShader.SetBuffer(kernelIndex, "_BoneRotBuffer", m_GpuParticleRotData);
             m_ComputeShader.SetBuffer(kernelIndex, "_BoneIndicesBuffer", m_GpuBoneIndices);
             m_ComputeShader.SetBuffer(kernelIndex, "_BoneWeightBuffer", m_GpuBoneWeights);
         }
+        
+        
 
-        public void OnDrawGizmos()
-        {
-            for(int i = 0; i < m_ParticleCount; i++)
-            {
-                Gizmos.color = Color.red;
-                Gizmos.DrawSphere(particlePos[i].xyz,0.03f);
-            }
-            
-        }
+        // public void OnDrawGizmos()
+        // {
+        //     for(int i = 0; i < m_ParticleCount; i++)
+        //     {
+        //         Gizmos.color = Color.red;
+        //         Gizmos.DrawSphere(particlePos[i].xyz,0.03f);
+        //     }
+        //     
+        // }
     }
 }

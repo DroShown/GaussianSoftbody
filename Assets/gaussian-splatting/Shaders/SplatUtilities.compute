@@ -55,6 +55,7 @@ ByteAddressBuffer _BoneRestPosBuffer;
 ByteAddressBuffer _BonePosBuffer;
 ByteAddressBuffer _BoneRestRotBuffer;
 ByteAddressBuffer _BoneRotBuffer;
+//ByteAddressBuffer _SplatRotBuffer;
 
 // radix sort etc. friendly, see http://stereopsis.com/radix.html
 uint FloatToSortableUint(float f)
@@ -199,22 +200,23 @@ float4 calcRot(uint idx)
     uint4 boneIndices = asuint(_BoneIndicesBuffer.Load4(idx * 16));
     float4 boneWeights = asfloat(_BoneWeightBuffer.Load4(idx * 16));
 
-    float4 rot = asfloat(_BoneRotBuffer.Load4(boneIndices.x * 16));
-    float4 rot2 = asfloat(_BoneRotBuffer.Load4(boneIndices.y * 16));
-    float4 rot3 = asfloat(_BoneRotBuffer.Load4(boneIndices.z * 16));
-    float4 rot4 = asfloat(_BoneRotBuffer.Load4(boneIndices.w * 16));
+    const float4 rot = asfloat(_BoneRotBuffer.Load4(boneIndices.x * 16));
+    const float4 rot2 = asfloat(_BoneRotBuffer.Load4(boneIndices.y * 16));
+    const float4 rot3 = asfloat(_BoneRotBuffer.Load4(boneIndices.z * 16));
+    const float4 rot4 = asfloat(_BoneRotBuffer.Load4(boneIndices.w * 16));
 
-    float4 restRot = asfloat(_BoneRestRotBuffer.Load4(boneIndices.x * 16));
-    float4 restRot2 = asfloat(_BoneRestRotBuffer.Load4(boneIndices.y * 16));
-    float4 restRot3 = asfloat(_BoneRestRotBuffer.Load4(boneIndices.z * 16));
-    float4 restRot4 = asfloat(_BoneRestRotBuffer.Load4(boneIndices.w * 16));
+    const float4 restRot = asfloat(_BoneRestRotBuffer.Load4(boneIndices.x * 16));
+    const float4 restRot2 = asfloat(_BoneRestRotBuffer.Load4(boneIndices.y * 16));
+    const float4 restRot3 = asfloat(_BoneRestRotBuffer.Load4(boneIndices.z * 16));
+    const float4 restRot4 = asfloat(_BoneRestRotBuffer.Load4(boneIndices.w * 16));
 
-    float4 diffRot = QuatMul(rot,QuatConjugate(restRot));
-    float4 diffRot2 = QuatMul(rot2,QuatConjugate(restRot2));
-    float4 diffRot3 = QuatMul(rot3,QuatConjugate(restRot3));
-    float4 diffRot4 = QuatMul(rot4,QuatConjugate(restRot4));
+    const float4 diffRot = QuatMul(rot,QuatConjugate(restRot));
+    const float4 diffRot2 = QuatMul(rot2,QuatConjugate(restRot2));
+    const float4 diffRot3 = QuatMul(rot3,QuatConjugate(restRot3));
+    const float4 diffRot4 = QuatMul(rot4,QuatConjugate(restRot4));
 
-    return diffRot * boneWeights.x + diffRot2 * boneWeights.y + diffRot3 * boneWeights.z + diffRot4 * boneWeights.w;
+    float4 sum = diffRot * boneWeights.x + diffRot2 * boneWeights.y + diffRot3 * boneWeights.z + diffRot4 * boneWeights.w;
+    return sum;
 }
 
 [numthreads(GROUP_SIZE,1,1)]
@@ -255,8 +257,10 @@ void CSCalcViewData (uint3 id : SV_DispatchThreadID)
     if (!behindCam)
     {
         float4 boxRot = splat.rot;
-        //float4 diffRot = calcRot(idx);
-        //boxRot = QuatMul(diffRot, boxRot);
+        float4 diffRot = calcRot(idx);
+        boxRot = QuatMul(diffRot, boxRot);
+        //boxRot = float4(0,0,0,0);
+        
         float3 boxSize = splat.scale;
 
         float3x3 splatRotScaleMat = CalcMatrixFromRotationScale(boxRot, boxSize);
@@ -904,6 +908,7 @@ void CSUpdatePos(uint3 id : SV_DispatchThreadID)
     float3 boneRestPos2 = asfloat(_BoneRestPosBuffer.Load3(boneIndices.y * 16));
     float3 boneRestPos3 = asfloat(_BoneRestPosBuffer.Load3(boneIndices.z * 16));
     float3 boneRestPos4 = asfloat(_BoneRestPosBuffer.Load3(boneIndices.w * 16));
+    #if 1
 
     float4 rot = asfloat(_BoneRotBuffer.Load4(boneIndices.x * 16));
     float4 rot2 = asfloat(_BoneRotBuffer.Load4(boneIndices.y * 16));
@@ -914,17 +919,12 @@ void CSUpdatePos(uint3 id : SV_DispatchThreadID)
     float4 restRot2 = asfloat(_BoneRestRotBuffer.Load4(boneIndices.y * 16));
     float4 restRot3 = asfloat(_BoneRestRotBuffer.Load4(boneIndices.z * 16));
     float4 restRot4 = asfloat(_BoneRestRotBuffer.Load4(boneIndices.w * 16));
-
+    
     float4 diffRot = QuatMul(rot,QuatConjugate(restRot));
     float4 diffRot2 = QuatMul(rot2,QuatConjugate(restRot2));
     float4 diffRot3 = QuatMul(rot3,QuatConjugate(restRot3));
     float4 diffRot4 = QuatMul(rot4,QuatConjugate(restRot4));
-    // float4 diffRot = float4(0,0,0,0);
-    // float4 diffRot2 = float4(0,0,0,0);
-    // float4 diffRot3 = float4(0,0,0,0);
-    // float4 diffRot4 = float4(0,0,0,0);
     
-
     float3 deltaPos = restPos - boneRestPos;
     float3 deltaPos2 = restPos - boneRestPos2;
     float3 deltaPos3 = restPos - boneRestPos3;
@@ -934,12 +934,28 @@ void CSUpdatePos(uint3 id : SV_DispatchThreadID)
     float3 rotDeltaPos2 = QuatRotateVector(deltaPos2, diffRot2) - deltaPos2;
     float3 rotDeltaPos3 = QuatRotateVector(deltaPos3, diffRot3) - deltaPos3;
     float3 rotDeltaPos4 = QuatRotateVector(deltaPos4, diffRot4) - deltaPos4;
+
     
     float3 pos = restPos +
         (bonePos + rotDeltaPos - boneRestPos) * boneWeights.x + 
         (bonePos2 + rotDeltaPos2 - boneRestPos2) * boneWeights.y + 
         (bonePos3 + rotDeltaPos3 - boneRestPos3) * boneWeights.z + 
         (bonePos4 + rotDeltaPos4 - boneRestPos4) * boneWeights.w;
+    #else
+
+    float3 deltaPosFinal = (restPos - boneRestPos) * boneWeights.x + 
+        (restPos - boneRestPos2) * boneWeights.y + 
+        (restPos - boneRestPos3) * boneWeights.z + 
+        (restPos - boneRestPos4) * boneWeights.w;
+    float4 diffRotFinal = calcRot(idx);
+    float3 rotDeltaPosFinal = QuatRotateVector(deltaPosFinal, diffRotFinal) - deltaPosFinal;
     
+    float3 pos = restPos +
+        (bonePos  - boneRestPos) * boneWeights.x + 
+        (bonePos2  - boneRestPos2) * boneWeights.y + 
+        (bonePos3  - boneRestPos3) * boneWeights.z + 
+        (bonePos4  - boneRestPos4) * boneWeights.w + rotDeltaPosFinal;
+
+    #endif
     _SplatPos.Store3(idx * stride, asuint(pos));
 }

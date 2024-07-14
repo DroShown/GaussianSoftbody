@@ -566,7 +566,7 @@ namespace GaussianSplatting.Runtime
             DestroyImmediate(m_MatDebugBoxes);
         }
 
-        internal void CalcViewData(CommandBuffer cmb, Camera cam, Matrix4x4 matrix)
+        internal virtual void CalcViewData(CommandBuffer cmb, Camera cam, Matrix4x4 matrix)
         {
             if (cam.cameraType == CameraType.Preview)
                 return;

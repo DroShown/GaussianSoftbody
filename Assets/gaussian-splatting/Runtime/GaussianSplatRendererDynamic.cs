@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
 using Obi;
@@ -10,7 +11,7 @@ namespace GaussianSplatting.Runtime
 {
 
 
-    [ExecuteInEditMode]
+    //[ExecuteInEditMode]
     public class GaussianSplatRendererDynamic : GaussianSplatRenderer
     {
         
@@ -33,7 +34,7 @@ namespace GaussianSplatting.Runtime
         
         public new void OnEnable()
         {
-            
+            Debug.Log("enable begin");
             base.OnEnable();
 
             m_ParticleCount = m_ObiSoftbody.blueprint.particleCount;
@@ -75,7 +76,7 @@ namespace GaussianSplatting.Runtime
             // m_GpuPosData.GetData(splatPos);
             // m_GpuRestPosData.GetData(splatRestPos);
             particlePos = new float4[m_ParticleCount];
-
+            Debug.Log("enable end");
         }
         public new void Update()
         {
@@ -93,12 +94,13 @@ namespace GaussianSplatting.Runtime
             
         }
 
-        internal new void CalcViewData(CommandBuffer cmb, Camera cam, Matrix4x4 matrix)
+        internal override void CalcViewData(CommandBuffer cmb, Camera cam, Matrix4x4 matrix)
         {
             if (cam.cameraType == CameraType.Preview)
                 return;
 
             var tr = transform;
+            //Debug.Log("calc view data");
 
             Matrix4x4 matView = cam.worldToCameraMatrix;
             Matrix4x4 matProj = GL.GetGPUProjectionMatrix(cam.projectionMatrix, true);
@@ -123,6 +125,7 @@ namespace GaussianSplatting.Runtime
             cmb.SetComputeFloatParam(m_CSSplatUtilities, Props.SplatOpacityScale, m_OpacityScale);
             cmb.SetComputeIntParam(m_CSSplatUtilities, Props.SHOrder, m_SHOrder);
             cmb.SetComputeIntParam(m_CSSplatUtilities, Props.SHOnly, m_SHOnly ? 1 : 0);
+            BindBuffersToCS((int)KernelIndices.CalcViewData, cmb);
 
             m_CSSplatUtilities.GetKernelThreadGroupSizes((int)KernelIndices.CalcViewData, out uint gsX, out _, out _);
             cmb.DispatchCompute(m_CSSplatUtilities, (int)KernelIndices.CalcViewData, (m_GpuView.count + (int)gsX - 1)/(int)gsX, 1, 1);
@@ -175,17 +178,35 @@ namespace GaussianSplatting.Runtime
             }
             
         }
-        
-        
 
-        // public void OnDrawGizmos()
-        // {
-        //     for(int i = 0; i < m_ParticleCount; i++)
-        //     {
-        //         Gizmos.color = Color.red;
-        //         Gizmos.DrawSphere(particlePos[i].xyz,0.03f);
-        //     }
-        //     
-        // }
+        struct SplatSHData
+        {
+            half3 col, sh1, sh2, sh3, sh4, sh5, sh6, sh7, sh8, sh9, sh10, sh11, sh12, sh13, sh14, sh15;
+        };
+        struct viewData
+        {
+            public float3 pos;
+            public float4 rot;
+            float3 scale;
+            half opacity;
+            SplatSHData sh;
+        }
+
+        public void OnDrawGizmos()
+        {
+            // var viewDataList = new viewData[m_SplatCount];
+            // m_GpuView.GetData(viewDataList);
+            // //draw viewdata.rot as vector representing orientation
+            // for (int i = 0; i < m_SplatCount; i+=100)
+            // {
+            //     var viewData = viewDataList[i];
+            //     Gizmos.color = Color.red;
+            //     Quaternion rot = new Quaternion(viewData.rot.x,viewData.rot.y,viewData.rot.z,viewData.rot.w);
+            //     Gizmos.DrawRay(viewData.pos,rot * Vector3.right);
+            //     Gizmos.color = Color.green;
+            //     Gizmos.DrawSphere(viewData.pos,0.01f);
+            // }
+
+        }
     }
 }

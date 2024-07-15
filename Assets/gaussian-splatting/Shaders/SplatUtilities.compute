@@ -215,7 +215,7 @@ float4 calcRot(uint idx)
     const float4 diffRot3 = QuatMul(rot3,QuatConjugate(restRot3));
     const float4 diffRot4 = QuatMul(rot4,QuatConjugate(restRot4));
 
-    float4 sum = diffRot * boneWeights.x + diffRot2 * boneWeights.y + diffRot3 * boneWeights.z + diffRot4 * boneWeights.w;
+    float4 sum = diffRot;// * boneWeights.x + diffRot2 * boneWeights.y + diffRot3 * boneWeights.z + diffRot4 * boneWeights.w;
     return sum;
 }
 
@@ -937,10 +937,11 @@ void CSUpdatePos(uint3 id : SV_DispatchThreadID)
 
     
     float3 pos = restPos +
-        (bonePos + rotDeltaPos - boneRestPos) * boneWeights.x + 
-        (bonePos2 + rotDeltaPos2 - boneRestPos2) * boneWeights.y + 
-        (bonePos3 + rotDeltaPos3 - boneRestPos3) * boneWeights.z + 
-        (bonePos4 + rotDeltaPos4 - boneRestPos4) * boneWeights.w;
+        (bonePos + rotDeltaPos - boneRestPos);
+    // * boneWeights.x + 
+    //     (bonePos2 + rotDeltaPos2 - boneRestPos2) * boneWeights.y + 
+    //     (bonePos3 + rotDeltaPos3 - boneRestPos3) * boneWeights.z + 
+    //     (bonePos4 + rotDeltaPos4 - boneRestPos4) * boneWeights.w;
     #else
 
     float3 deltaPosFinal = (restPos - boneRestPos) * boneWeights.x + 

@@ -31,6 +31,8 @@
 
 #pragma use_dxc
 
+#define SMASH 0
+
 
 #include "DeviceRadixSort.hlsl"
 #include "GaussianSplatting.hlsl"
@@ -215,7 +217,11 @@ float4 calcRot(uint idx)
     const float4 diffRot3 = QuatMul(rot3,QuatConjugate(restRot3));
     const float4 diffRot4 = QuatMul(rot4,QuatConjugate(restRot4));
 
-    float4 sum = diffRot;// * boneWeights.x + diffRot2 * boneWeights.y + diffRot3 * boneWeights.z + diffRot4 * boneWeights.w;
+    #if SMASH
+    float4 sum = diffRot;
+    #else
+    float4 sum = diffRot * boneWeights.x + diffRot2 * boneWeights.y + diffRot3 * boneWeights.z + diffRot4 * boneWeights.w;
+    #endif
     return sum;
 }
 
@@ -935,13 +941,17 @@ void CSUpdatePos(uint3 id : SV_DispatchThreadID)
     float3 rotDeltaPos3 = QuatRotateVector(deltaPos3, diffRot3) - deltaPos3;
     float3 rotDeltaPos4 = QuatRotateVector(deltaPos4, diffRot4) - deltaPos4;
 
-    
+    #if SMASH
     float3 pos = restPos +
         (bonePos + rotDeltaPos - boneRestPos);
-    // * boneWeights.x + 
-    //     (bonePos2 + rotDeltaPos2 - boneRestPos2) * boneWeights.y + 
-    //     (bonePos3 + rotDeltaPos3 - boneRestPos3) * boneWeights.z + 
-    //     (bonePos4 + rotDeltaPos4 - boneRestPos4) * boneWeights.w;
+    #else
+    float3 pos = restPos +
+        (bonePos + rotDeltaPos - boneRestPos) * boneWeights.x + 
+        (bonePos2 + rotDeltaPos2 - boneRestPos2) * boneWeights.y + 
+        (bonePos3 + rotDeltaPos3 - boneRestPos3) * boneWeights.z + 
+        (bonePos4 + rotDeltaPos4 - boneRestPos4) * boneWeights.w;
+    #endif
+    
     #else
 
     float3 deltaPosFinal = (restPos - boneRestPos) * boneWeights.x + 

@@ -2034,6 +2034,7 @@ MonoBehaviour:
     batches: []
   groups: []
   inputMesh: {fileID: 4300000, guid: 3fe48b0453be549ca98eb98e77175fd1, type: 3}
+  position: {x: 0, y: 0, z: 0}
   scale: {x: 1, y: 1, z: 1}
   rotation: {x: 0, y: 0, z: 0, w: 1}
   surfaceSamplingMode: 2

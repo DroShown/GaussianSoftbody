@@ -25,10 +25,7 @@ namespace GaussianSplatting.Runtime
         
         public float4[] boneWeights;
         public int4[] boneIndices;
-        public float3[] splatPos;
-        public float3[] splatRestPos;
-        public float4[] particlePos;
-        
+
         public ComputeShader m_ComputeShader => m_CSSplatUtilities;
         public int m_ParticleCount;
         
@@ -70,12 +67,7 @@ namespace GaussianSplatting.Runtime
             m_GpuBoneWeights.GetData(boneWeights);
             boneIndices = new int4[m_SplatCount];
             m_GpuBoneIndices.GetData(boneIndices);
-            
-            // splatPos = new float3[m_SplatCount];
-            // splatRestPos = new float3[m_SplatCount];
-            // m_GpuPosData.GetData(splatPos);
-            // m_GpuRestPosData.GetData(splatRestPos);
-            particlePos = new float4[m_ParticleCount];
+
             Debug.Log("enable end");
         }
         public new void Update()

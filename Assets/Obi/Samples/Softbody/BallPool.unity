@@ -309,14 +309,14 @@ MonoBehaviour:
   m_SurfaceCollisions: 0
   m_SoftbodyBlueprint: {fileID: 11400000, guid: baefb848980a744d5b90ff925c520e5b, type: 2}
   m_SelfCollisions: 1
+  _plasticRecovery: 0
   centerBatch: -1
   centerShape: -1
-  _shapeMatchingConstraintsEnabled: 1
+  _shapeMatchingConstraintsEnabled: 0
   _deformationResistance: 0.956
   _maxDeformation: 0.031
   _plasticYield: 0
   _plasticCreep: 0
-  _plasticRecovery: 0
 --- !u!137 &662679666
 SkinnedMeshRenderer:
   m_ObjectHideFlags: 0

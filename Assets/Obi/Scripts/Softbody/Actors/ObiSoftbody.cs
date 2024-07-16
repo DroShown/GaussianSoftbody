@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Unity.Mathematics;
 using UnityEngine;
@@ -10,18 +11,17 @@ namespace Obi
         [SerializeField] protected ObiSoftbodyBlueprintBase m_SoftbodyBlueprint;
 
         [SerializeField] protected bool m_SelfCollisions = false;
-
+        [SerializeField] protected float _plasticRecovery = 0;
         [SerializeField] [HideInInspector] private int centerBatch = -1;
         [SerializeField] [HideInInspector] private int centerShape = -1;
-
+        //[SerializeField] protected float velocityMagnitude = 0;
         // shape matching constraints:
         [SerializeField] protected bool _shapeMatchingConstraintsEnabled = true;
         [SerializeField] [Range(0, 1)] protected float _deformationResistance = 1;
         [SerializeField] [Range(0, 1)] protected float _maxDeformation = 0;
         [SerializeField] protected float _plasticYield = 0;
         [SerializeField] protected float _plasticCreep = 0;
-        [SerializeField] protected float _plasticRecovery = 0;
-
+        private bool flag = false;
         /// <summary>  
         /// Whether this actor's shape matching constraints are enabled.
         /// </summary>
@@ -32,9 +32,179 @@ namespace Obi
             {
                 if (value != _shapeMatchingConstraintsEnabled)
                 {
-                    _shapeMatchingConstraintsEnabled = value; SetConstraintsDirty(Oni.ConstraintType.ShapeMatching);
+                    _shapeMatchingConstraintsEnabled = value;
+                    SetConstraintsDirty(Oni.ConstraintType.ShapeMatching);
+
+                    if (!_shapeMatchingConstraintsEnabled)
+                    {
+                        Debug.Log("111111111");
+                    }
                 }
             }
+        }
+
+        private void Update()
+        {
+            if (!_shapeMatchingConstraintsEnabled)
+            {
+                // shapeMatchingConstraintsEnabled Ϊ false�����������ٶ�
+                UpdateParticleVelocities();
+                flag = true;
+            }
+            
+        }
+        Vector3 CalculateCenter()
+        {
+            Vector3 center = Vector3.zero;
+            for (int i = 0; i < solver.positions.count; i++)
+            {
+                Vector4 currentPosition = solver.positions[i];
+                center += new Vector3(currentPosition.x, currentPosition.y, currentPosition.z);
+            }
+            center /= solver.positions.count; // ��������λ�õľ�ֵ
+            return center;
+        }
+        //private void UpdateParticleVelocities()
+        //{
+        //    float maxVelocityMultiplier = 4.0f; // ����ٶȳ���
+        //    float minVelocityMultiplier = 0.8f; // ��С�ٶȳ���
+        //    int numParticles = solver.positions.count;
+        //    Vector3 attackPoint = new Vector3(solver.positions[0].x, solver.positions[0].y, solver.positions[0].z); // ���蹥����Ϊ��һ�����ӵ�λ��
+
+        //    // �洢���������Ͷ�Ӧ�ľ���
+        //    int[] particleIndices = new int[numParticles];
+        //    float[] distances = new float[numParticles];
+
+        //    // ����ÿ�����ӵ�������ľ��룬���洢
+        //    for (int i = 0; i < numParticles; i++)
+        //    {
+        //        Vector4 currentPosition = solver.positions[i];
+        //        distances[i] = Vector3.Distance(new Vector3(currentPosition.x, currentPosition.y, currentPosition.z), attackPoint);
+        //        particleIndices[i] = i;
+        //    }
+
+        //    // ���ݾ������������������������
+        //    Array.Sort(distances, particleIndices);
+
+        //    // �����ٶȳ����ķ�Χ
+        //    float multiplierRange = maxVelocityMultiplier - minVelocityMultiplier;
+
+        //    // ���������ٶ�
+        //    for (int i = 0; i < numParticles; i++)
+        //    {
+
+        //        // ����������������ȡԭʼ����
+        //        int originalIndex = particleIndices[i];
+        //        Vector4 currentPosition = solver.positions[originalIndex];
+        //        Vector3 particlePosition = new Vector3(currentPosition.x, currentPosition.y, currentPosition.z);
+
+        //        // �����ٶȳ������������ӵ�����λ�����Բ�ֵ
+        //        float velocityMultiplier = Mathf.Lerp(minVelocityMultiplier, maxVelocityMultiplier, (float)i / (numParticles - 1));
+
+        //        // �����ٶ�����
+        //        Vector3 velocity = (particlePosition - CalculateCenter()).normalized * velocityMultiplier;
+        //        velocity.x *= 0.5f;
+        //        velocity.z *= 0.5f;
+        //        // Ӧ���ٶ�
+        //        solver.velocities[originalIndex] = new Vector4(velocity.x, velocity.y, velocity.z, 0);
+        //    }
+
+        //    // ��������...
+        //    solver.gravity = new Vector3(0, -200f, 0); // ��������
+        //    solver.gravitySpace = Space.World; // �������ÿռ�
+        //    solver.frictionConstraintParameters.enabled = true; // Ħ����
+        //}
+        private void UpdateParticleVelocities()
+        {
+            int numParticles = solver.positions.count;
+            if (!flag)
+            {
+                float maxVelocityMultiplier = 4.0f; // ����ٶȳ���
+                float minVelocityMultiplier = 0.8f; // ��С�ٶȳ���
+                Vector3 attackPoint = new Vector3(solver.positions[0].x, solver.positions[0].y, solver.positions[0].z); // ���蹥����Ϊ��һ�����ӵ�λ��
+
+                // �洢���������Ͷ�Ӧ�ľ���
+                int[] particleIndices = new int[numParticles];
+                float[] distances = new float[numParticles];
+
+                // ����ÿ�����ӵ�������ľ��룬���洢
+                for (int i = 0; i < numParticles; i++)
+                {
+                    Vector4 currentPosition = solver.positions[i];
+                    distances[i] = Vector3.Distance(new Vector3(currentPosition.x, currentPosition.y, currentPosition.z), attackPoint);
+                    particleIndices[i] = i;
+                }
+
+                // ���ݾ������������������������
+                Array.Sort(distances, particleIndices);
+
+                // ����һ���������洢���º���ٶ�
+                Vector4[] updatedVelocities = new Vector4[numParticles];
+
+                // ���������ٶ�
+                for (int i = 0; i < numParticles; i++)
+                {
+                    // ����������������ȡԭʼ����
+                    int originalIndex = particleIndices[i];
+                    Vector4 currentPosition = solver.positions[originalIndex];
+                    Vector3 particlePosition = new Vector3(currentPosition.x, currentPosition.y, currentPosition.z);
+
+                    // �����ٶȳ������������ӵ�����λ�����Բ�ֵ
+                    float velocityMultiplier = Mathf.Lerp(minVelocityMultiplier, maxVelocityMultiplier, (float)i / (numParticles - 1));
+
+                    // �����ٶ�����
+                    Vector3 velocity = (particlePosition - CalculateCenter()).normalized * velocityMultiplier;
+
+
+                    // Ӧ���ٶ�
+                    updatedVelocities[originalIndex] = new Vector4(velocity.x, velocity.y, velocity.z, 0);
+                }
+
+                // ��ȡ�������ӵ� y ���ٶȲ�����
+                float[] yVelocities = new float[numParticles];
+                for (int i = 0; i < numParticles; i++)
+                {
+                    yVelocities[i] = updatedVelocities[i].y;
+                }
+                Array.Sort(yVelocities);
+
+                // �ҵ�ǰ 30% y ���ٶ��������ӵ��ٶ���ֵ
+                int thresholdIndex = (int)(numParticles * 0.7f);
+                float velocityThreshold = yVelocities[thresholdIndex];
+
+                // �� y ���ٶȴ�����ֵ�����ӵ� y ������С��ԭ���� 70%
+                for (int i = 0; i < numParticles; i++)
+                {
+                    if (updatedVelocities[i].y > velocityThreshold)
+                    {
+                        updatedVelocities[i] = new Vector4(updatedVelocities[i].x, updatedVelocities[i].y * 0.6f, updatedVelocities[i].z, updatedVelocities[i].w);
+                    }
+                }
+
+                // ���� solver ���ٶ�
+                for (int i = 0; i < numParticles; i++)
+                {
+                    solver.velocities[i] = updatedVelocities[i];
+                }
+
+            }
+            else
+            {
+                for (int i = 0; i < numParticles; i++)
+                {
+
+                    Vector4 velocity = solver.velocities[i];
+                    if (velocity.x < 0.1) velocity.x = 0;
+                    if (velocity.z < 0.1) velocity.z = 0;
+                    velocity.x *= 0.4f;
+                    velocity.z *= 0.4f;
+                    Debug.Log("velocity.x:" + velocity.x);
+                    Debug.Log("velocity.z:" + velocity.z);
+                }
+
+                
+            }
+           
         }
 
         /// <summary>  
@@ -278,8 +448,26 @@ namespace Obi
         }
         
 
-        
+        public override void SetRestPosDataToCS(ComputeBuffer buffer)
+        {
+            //set the data to the compute shader:
+            buffer.SetData(solver.positions.AsNativeArray<Vector4>());
+        }
 
+        
+        public void OnDrawGizmos()
+        {
+            var restPositions = solver.restPositions.AsNativeArray<Vector4>();
+            var positions = solver.positions.AsNativeArray<Vector4>();
+            for (int i = 0; i < positions.Length; ++i)
+            {
+                var pos = positions[i];
+                var restPos = restPositions[i];
+                Gizmos.color = Color.green;
+                Gizmos.DrawLine(pos, restPos);
+                Gizmos.DrawSphere(pos, 0.01f);
+            }
+        }
 
     }
     

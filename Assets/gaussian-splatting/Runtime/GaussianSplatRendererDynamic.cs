@@ -5,6 +5,7 @@ using Unity.Mathematics;
 using UnityEngine;
 using Obi;
 using UnityEngine.Rendering;
+using UnityEngine.Serialization;
 
 
 namespace GaussianSplatting.Runtime
@@ -15,7 +16,7 @@ namespace GaussianSplatting.Runtime
     public class GaussianSplatRendererDynamic : GaussianSplatRenderer
     {
         
-        public ObiSoftbody m_ObiSoftbody;
+        public ObiActor m_ObiActor;
         ComputeBuffer m_GpuParticlePosData;
         ComputeBuffer m_GpuParticleRestPosData;
         ComputeBuffer m_GpuParticleRotData;
@@ -34,8 +35,8 @@ namespace GaussianSplatting.Runtime
             Debug.Log("enable begin");
             base.OnEnable();
 
-            m_ParticleCount = m_ObiSoftbody.blueprint.particleCount;
-            Debug.Log("particle count:"+m_ObiSoftbody.solverIndices.Length);
+            m_ParticleCount = m_ObiActor.blueprint.particleCount;
+            Debug.Log("particle count:"+m_ObiActor.solverIndices.Length);
 
             m_GpuParticlePosData = new ComputeBuffer(m_ParticleCount, sizeof(float) * 4);
             m_GpuParticleRestPosData = new ComputeBuffer(m_ParticleCount, sizeof(float) * 4);
@@ -46,12 +47,20 @@ namespace GaussianSplatting.Runtime
             
             
             
+            //initialize the bone indices and weights
+            CalcIndicesAndWeight();
+
+            Debug.Log("enable end");
+        }
+
+        public void CalcIndicesAndWeight()
+        {
             if(m_GpuParticlePosData == null)
                 Debug.Log("m_GPUpos is null");
-            m_ObiSoftbody.SetRotDataToCS(m_GpuParticleRotData);
-            m_ObiSoftbody.SetRestRotDataToCS(m_GpuParticleRestRotData);
-            m_ObiSoftbody.SetPosDataToCS(m_GpuParticlePosData);
-            m_ObiSoftbody.SetRestPosDataToCS(m_GpuParticleRestPosData);
+            m_ObiActor.SetRotDataToCS(m_GpuParticleRotData);
+            m_ObiActor.SetRestRotDataToCS(m_GpuParticleRestRotData);
+            m_ObiActor.SetPosDataToCS(m_GpuParticlePosData);
+            m_ObiActor.SetRestPosDataToCS(m_GpuParticleRestPosData);
 
             var cmb = new CommandBuffer();
             BindBuffersToCS((int)KernelIndices.CalcIndicesAndWeight,cmb);
@@ -67,15 +76,14 @@ namespace GaussianSplatting.Runtime
             m_GpuBoneWeights.GetData(boneWeights);
             boneIndices = new int4[m_SplatCount];
             m_GpuBoneIndices.GetData(boneIndices);
-
-            Debug.Log("enable end");
         }
+        
         public new void Update()
         {
             //调用基类的Update方法
             base.Update();
-            m_ObiSoftbody.SetRotDataToCS(m_GpuParticleRotData);
-            m_ObiSoftbody.SetPosDataToCS(m_GpuParticlePosData);
+            m_ObiActor.SetRotDataToCS(m_GpuParticleRotData);
+            m_ObiActor.SetPosDataToCS(m_GpuParticlePosData);
             //TestTranslatePos();
             var cmb = new CommandBuffer();
             BindBuffersToCS((int)KernelIndices.UpdatePos,cmb);

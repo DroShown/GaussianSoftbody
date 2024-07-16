@@ -277,40 +277,9 @@ namespace Obi
             base.Interpolate();
         }
         
-        public void SetPosDataToCS(ComputeBuffer buffer)
-        {
-            //set the data to the compute shader:
-            buffer.SetData(solver.positions.AsNativeArray<Vector4>());
-        }
-        public void SetRestPosDataToCS(ComputeBuffer buffer)
-        {
-            //set the data to the compute shader:
-            buffer.SetData(solver.positions.AsNativeArray<Vector4>());
-        }
-        public void SetRotDataToCS(ComputeBuffer buffer)
-        {
-            //set the data to the compute shader:
-            buffer.SetData(solver.orientations.AsNativeArray<quaternion>());
-        }
-        public void SetRestRotDataToCS(ComputeBuffer buffer)
-        {
-            //set the data to the compute shader:
-            buffer.SetData(solver.orientations.AsNativeArray<quaternion>());
-        }
+
         
-        public void OnDrawGizmos()
-        {
-            var restPositions = solver.restPositions.AsNativeArray<Vector4>();
-            var positions = solver.positions.AsNativeArray<Vector4>();
-            for (int i = 0; i < positions.Length; ++i)
-            {
-                var pos = positions[i];
-                var restPos = restPositions[i];
-                Gizmos.color = Color.green;
-                Gizmos.DrawLine(pos, restPos);
-                Gizmos.DrawSphere(pos, 0.01f);
-            }
-        }
+
 
     }
     

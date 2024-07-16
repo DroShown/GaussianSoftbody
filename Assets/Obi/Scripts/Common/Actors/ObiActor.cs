@@ -2,6 +2,7 @@ using UnityEngine;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Mathematics;
 
 
 namespace Obi
@@ -970,6 +971,42 @@ namespace Obi
                         }
                         break;
                 }
+            }
+        }
+        
+        public void SetPosDataToCS(ComputeBuffer buffer)
+        {
+            //set the data to the compute shader:
+            buffer.SetData(solver.positions.AsNativeArray<Vector4>());
+        }
+        public virtual void SetRestPosDataToCS(ComputeBuffer buffer)
+        {
+            //set the data to the compute shader:
+            buffer.SetData(solver.restPositions.AsNativeArray<Vector4>());
+        }
+        public void SetRotDataToCS(ComputeBuffer buffer)
+        {
+            //set the data to the compute shader:
+            buffer.SetData(solver.orientations.AsNativeArray<quaternion>());
+        }
+        public void SetRestRotDataToCS(ComputeBuffer buffer)
+        {
+            //set the data to the compute shader:
+            buffer.SetData(solver.restOrientations.AsNativeArray<quaternion>());
+        }
+        
+        public void OnDrawGizmos()
+        {
+            var restPositions = solver.restPositions.AsNativeArray<Vector4>();
+            var positions = solver.positions.AsNativeArray<Vector4>();
+            //Debug.Log("position len"+positions.Length);
+            for (int i = 0; i < positions.Length; ++i)
+            {
+                var pos = positions[i];
+                //var restPos = restPositions[i];
+                Gizmos.color = Color.green;
+                //Gizmos.DrawLine(pos, restPos);
+                Gizmos.DrawSphere(pos, 0.01f);
             }
         }
 

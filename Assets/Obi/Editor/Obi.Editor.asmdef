@@ -1,8 +1,7 @@
 {
     "name": "Obi.Editor",
     "references": [
-        "GUID:da7abd44cdeea48609605c1c2c9609c0",
-        "GaussianSplatting.RunTime"
+        "GUID:da7abd44cdeea48609605c1c2c9609c0"
     ],
     "includePlatforms": [
         "Editor"
